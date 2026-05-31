@@ -1,0 +1,27 @@
+{
+  "swiss_national_bank_\u2014_zurich": {
+    "nasa_granules": 10,
+    "esa_scenes": 5,
+    "last_updated": "2026-05-23T23:53:55.175009"
+  },
+  "bank_of_japan_\u2014_tokyo": {
+    "nasa_granules": 10,
+    "esa_scenes": 5,
+    "last_updated": "2026-05-23T23:54:07.926643"
+  },
+  "cushing_oklahoma_\u2014_oil_storage": {
+    "nasa_granules": 10,
+    "esa_scenes": 5,
+    "last_updated": "2026-05-23T23:54:12.986441"
+  },
+  "port_of_rotterdam": {
+    "nasa_granules": 10,
+    "esa_scenes": 5,
+    "last_updated": "2026-05-23T23:54:20.025800"
+  },
+  "fort_knox_\u2014_kentucky": {
+    "nasa_granules": 10,
+    "esa_scenes": 0,
+    "last_updated": "2026-05-23T23:54:33.259541"
+  }
+}

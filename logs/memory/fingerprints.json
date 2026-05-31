@@ -1,0 +1,58 @@
+[
+  {
+    "id": "trade_XAUUSD_20260525_180329",
+    "type": "TRADE",
+    "timestamp": "2026-05-25T18:03:29.770977",
+    "label": "XAUUSD LONG \u2014 Real Yield Breakout",
+    "instrument": "XAUUSD",
+    "direction": "LONG",
+    "order_type": "BUY LIMIT",
+    "outcome": "win",
+    "pnl": 4.2,
+    "pips": 210.0,
+    "cfr_score": 0.72,
+    "kelly_size": 0.012,
+    "entry_state": {
+      "real_yield": 2.18,
+      "friction_score": 42.0,
+      "bias_score": 75.0,
+      "confluence_pct": 68.0,
+      "cfr_score": 0.72
+    },
+    "exit_state": {
+      "real_yield": 2.15,
+      "friction_score": 44.0,
+      "bias_score": 78.0
+    },
+    "summary": "WIN trade on XAUUSD LONG. PnL: +4.20 (+210.0 pips). Entry conditions: Real Yield 2.18%, Friction 42/100, Bias 75/100 with 68% confluence. CFR score at entry: 0.720. Trade was profitable.",
+    "challenge": false
+  },
+  {
+    "id": "trade_GBPJPY_20260525_180329",
+    "type": "TRADE",
+    "timestamp": "2026-05-25T18:03:29.795180",
+    "label": "GBPJPY SHORT \u2014 Regime Mismatch",
+    "instrument": "GBPJPY",
+    "direction": "SHORT",
+    "order_type": "SELL LIMIT",
+    "outcome": "loss",
+    "pnl": -0.9,
+    "pips": -50.0,
+    "cfr_score": 0.63,
+    "kelly_size": 0.008,
+    "entry_state": {
+      "real_yield": 2.18,
+      "friction_score": 71.0,
+      "bias_score": 32.0,
+      "confluence_pct": 48.0,
+      "cfr_score": 0.63,
+      "boe_boj_spread": 2.1
+    },
+    "exit_state": {
+      "friction_score": 75.0,
+      "bias_score": 45.0
+    },
+    "summary": "LOSS trade on GBPJPY SHORT. PnL: -0.90 (-50.0 pips). Entry conditions: Real Yield 2.18%, Friction 71/100, Bias 32/100 with 48% confluence. CFR score at entry: 0.630. Trade was losing.",
+    "challenge": false
+  }
+]

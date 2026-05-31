@@ -1,0 +1,65 @@
+{
+  "current_brain": "fast",
+  "switch_count": 7,
+  "switch_history": [
+    {
+      "timestamp": "2026-05-25T23:21:34.158786",
+      "from_brain": "slow",
+      "to_brain": "fast",
+      "triggers": [
+        "FRICTION"
+      ],
+      "switch_number": 1
+    },
+    {
+      "timestamp": "2026-05-26T18:39:17.669867",
+      "from_brain": "fast",
+      "to_brain": "slow",
+      "triggers": [],
+      "switch_number": 2
+    },
+    {
+      "timestamp": "2026-05-26T18:45:28.026418",
+      "from_brain": "slow",
+      "to_brain": "fast",
+      "triggers": [
+        "FRICTION"
+      ],
+      "switch_number": 3
+    },
+    {
+      "timestamp": "2026-05-26T19:11:22.434764",
+      "from_brain": "fast",
+      "to_brain": "slow",
+      "triggers": [],
+      "switch_number": 4
+    },
+    {
+      "timestamp": "2026-05-26T19:13:01.479418",
+      "from_brain": "slow",
+      "to_brain": "fast",
+      "triggers": [
+        "FRICTION",
+        "DARK_POOL"
+      ],
+      "switch_number": 5
+    },
+    {
+      "timestamp": "2026-05-26T19:36:31.286794",
+      "from_brain": "fast",
+      "to_brain": "slow",
+      "triggers": [],
+      "switch_number": 6
+    },
+    {
+      "timestamp": "2026-05-26T19:37:17.639924",
+      "from_brain": "slow",
+      "to_brain": "fast",
+      "triggers": [
+        "FRICTION"
+      ],
+      "switch_number": 7
+    }
+  ],
+  "last_saved": "2026-05-26T19:37:17.641917"
+}
