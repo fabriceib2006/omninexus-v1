@@ -21,3 +21,4 @@ gremlinpython
 torch
 matplotlib
 scipy
+websocket-client==1.8.0
