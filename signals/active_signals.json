@@ -1,0 +1,560 @@
+{
+  "signals": {
+    "XAUUSD": {
+      "instrument": "XAUUSD",
+      "direction": "WEAK SELL",
+      "confidence": 66.7,
+      "buy_pct": 33.3,
+      "sell_pct": 66.7,
+      "emoji": "\ud83d\udfe0",
+      "price": 4542.56382,
+      "entry": 4544.77209,
+      "stop_loss": 4566.85478,
+      "take_profit": 4500.60672,
+      "order_type": "SELL LIMIT",
+      "risk_reward": 2.0,
+      "session": "SYDNEY/TOKYO SESSION",
+      "signals": {
+        "rsi": {
+          "instrument": "XAUUSD",
+          "value": 58.36,
+          "signal": "BEARISH",
+          "strength": 10,
+          "emoji": "\ud83d\udfe0",
+          "period": 14,
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:11:03.255163"
+        },
+        "macd": {
+          "instrument": "XAUUSD",
+          "macd": 15.22974,
+          "signal": 18.93683,
+          "histogram": -3.70709,
+          "direction": "BEARISH",
+          "crossover": null,
+          "emoji": "\ud83d\udd34",
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:11:04.137048"
+        },
+        "bbands": {
+          "instrument": "XAUUSD",
+          "upper": 4573.10449,
+          "middle": 4539.09774,
+          "lower": 4505.09099,
+          "current": 4542.56382,
+          "pct_b": 0.551,
+          "band_width": 68.0135,
+          "position": "INSIDE BANDS",
+          "signal": "NEUTRAL",
+          "emoji": "\u26aa",
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:11:06.158132"
+        },
+        "ema200": {
+          "instrument": "XAUUSD",
+          "ema": 4512.6259,
+          "current": 4542.56382,
+          "trend": "UPTREND",
+          "signal": "BUY BIAS",
+          "emoji": "\ud83d\udfe2",
+          "period": 200,
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:11:07.032042"
+        },
+        "real_yield": {
+          "timestamp": "2026-05-29T23:11:14.155182",
+          "nominal_yield": 4.32,
+          "tips_real_yield": 2.06,
+          "breakeven_rate": 2.39,
+          "real_yield": 2.06,
+          "yield_delta": -0.029999999999999805,
+          "method": "TIPS_DIRECT",
+          "gold_bias": "STRONG BEARISH",
+          "bias_score": 10,
+          "bias_color": "\ud83d\udd34\ud83d\udd34",
+          "breakout_signal": false
+        },
+        "friction": {
+          "timestamp": "2026-05-29T23:11:21.922924",
+          "friction_score": 100,
+          "level": "CRITICAL",
+          "gold_impact": "MAXIMUM SAFE-HAVEN DEMAND",
+          "emoji": "\ud83d\udea8",
+          "alert_triggered": true,
+          "total_articles": 27,
+          "top_articles": [
+            {
+              "source": "Financial Times",
+              "title": "BoE governor warns Middle East ceasefire would \u2018still create uncertainty\u2019",
+              "score": 27.0,
+              "keywords": [
+                "war",
+                "ceasefire",
+                "rate cut",
+                "boe"
+              ],
+              "categories": [
+                "central_bank",
+                "conflict"
+              ]
+            },
+            {
+              "source": "Bloomberg Markets",
+              "title": "Treasuries Trim Iran War Losses on Week as Oil Retreats",
+              "score": 23.099999999999998,
+              "keywords": [
+                "war",
+                "conflict",
+                "coup",
+                "bond market"
+              ],
+              "categories": [
+                "market",
+                "conflict"
+              ]
+            },
+            {
+              "source": "BBC World News",
+              "title": "'Controversial' North Korean invasion setting for next Call of Duty game",
+              "score": 15.600000000000001,
+              "keywords": [
+                "war",
+                "invasion",
+                "military"
+              ],
+              "categories": [
+                "conflict"
+              ]
+            },
+            {
+              "source": "BBC World News",
+              "title": "Man jailed for 15 years over plot to attack Taylor Swift concert in Vienna",
+              "score": 14.040000000000001,
+              "keywords": [
+                "attack",
+                "terror"
+              ],
+              "categories": [
+                "geopolitical",
+                "conflict"
+              ]
+            },
+            {
+              "source": "Bloomberg Markets",
+              "title": "Ford Stock Has Best Month Since Financial Crisis on AI Rally",
+              "score": 14.0,
+              "keywords": [
+                "crisis",
+                "financial crisis"
+              ],
+              "categories": [
+                "economic"
+              ]
+            }
+          ],
+          "category_counts": {
+            "central_bank": 1,
+            "conflict": 19,
+            "market": 3,
+            "geopolitical": 6,
+            "economic": 3
+          },
+          "feed_scores": {
+            "BBC World News": 49.14,
+            "Al Jazeera": 40.440000000000005,
+            "Financial Times": 54.45,
+            "Bloomberg Markets": 75.6
+          },
+          "failed_feeds": [
+            "Reuters World News",
+            "Reuters Business"
+          ]
+        }
+      },
+      "votes": [
+        [
+          "SELL",
+          1
+        ],
+        [
+          "SELL",
+          2
+        ],
+        [
+          "BUY",
+          1
+        ],
+        [
+          "SELL",
+          3
+        ],
+        [
+          "BUY",
+          2
+        ]
+      ],
+      "timestamp": "2026-05-29T23:11:21.922924",
+      "status": "PENDING",
+      "activated": "2026-05-29T23:11:21.922924"
+    },
+    "GBPUSD": {
+      "instrument": "GBPUSD",
+      "direction": "BUY",
+      "confidence": 75.0,
+      "buy_pct": 75.0,
+      "sell_pct": 25.0,
+      "emoji": "\ud83d\udfe2",
+      "price": 1.34441,
+      "entry": 1.34422,
+      "stop_loss": 1.34234,
+      "take_profit": 1.34797,
+      "order_type": "BUY LIMIT",
+      "risk_reward": 2.0,
+      "session": "SYDNEY/TOKYO SESSION",
+      "signals": {
+        "rsi": {
+          "instrument": "GBPUSD",
+          "value": 60.1,
+          "signal": "BEARISH",
+          "strength": 15,
+          "emoji": "\ud83d\udfe0",
+          "period": 14,
+          "datetime": "2026-05-29 09:00:00",
+          "updated": "2026-05-28T23:29:12.131406"
+        },
+        "macd": {
+          "instrument": "GBPUSD",
+          "macd": 0.00066,
+          "signal": 0.00029,
+          "histogram": 0.00037,
+          "direction": "BULLISH",
+          "crossover": null,
+          "emoji": "\ud83d\udfe2",
+          "datetime": "2026-05-29 09:00:00",
+          "updated": "2026-05-28T23:30:03.359638"
+        },
+        "bbands": {
+          "instrument": "GBPUSD",
+          "upper": 1.34654,
+          "middle": 1.34213,
+          "lower": 1.33771,
+          "current": 1.34447,
+          "pct_b": 0.766,
+          "band_width": 0.00883,
+          "position": "INSIDE BANDS",
+          "signal": "NEUTRAL",
+          "emoji": "\u26aa",
+          "datetime": "2026-05-29 09:00:00",
+          "updated": "2026-05-28T23:30:05.509483"
+        },
+        "ema200": {
+          "instrument": "GBPUSD",
+          "ema": 1.34416,
+          "current": 1.34447,
+          "trend": "UPTREND",
+          "signal": "BUY BIAS",
+          "emoji": "\ud83d\udfe2",
+          "period": 200,
+          "datetime": "2026-05-29 09:00:00",
+          "updated": "2026-05-28T23:30:06.717157"
+        },
+        "friction": {
+          "timestamp": "2026-05-28T23:31:57.909057",
+          "friction_score": 100,
+          "level": "CRITICAL",
+          "gold_impact": "MAXIMUM SAFE-HAVEN DEMAND",
+          "emoji": "\ud83d\udea8",
+          "alert_triggered": true,
+          "total_articles": 36,
+          "top_articles": [
+            {
+              "source": "BBC World News",
+              "title": "Ebola-hit DR Congo faces 'catastrophic collision' of disease and conflict, WHO warns",
+              "score": 15.600000000000001,
+              "keywords": [
+                "war",
+                "conflict"
+              ],
+              "categories": [
+                "conflict"
+              ]
+            },
+            {
+              "source": "BBC World News",
+              "title": "Man jailed for 15 years over plot to attack Taylor Swift concert in Vienna",
+              "score": 14.040000000000001,
+              "keywords": [
+                "attack",
+                "terror"
+              ],
+              "categories": [
+                "geopolitical",
+                "conflict"
+              ]
+            },
+            {
+              "source": "Financial Times",
+              "title": "Chevron CEO warns oil prices to jump over summer as supplies dwindle",
+              "score": 13.5,
+              "keywords": [
+                "war",
+                "blockade"
+              ],
+              "categories": [
+                "conflict"
+              ]
+            },
+            {
+              "source": "Bloomberg Markets",
+              "title": "Gold Rises as Reports of US-Iran Deal Eases Bets on Higher Rates",
+              "score": 12.6,
+              "keywords": [
+                "war",
+                "ceasefire"
+              ],
+              "categories": [
+                "conflict"
+              ]
+            },
+            {
+              "source": "Bloomberg Markets",
+              "title": "Treasuries Rise as Optimism for US-Iran Deal Trims Oil Prices",
+              "score": 11.899999999999999,
+              "keywords": [
+                "war",
+                "inflation"
+              ],
+              "categories": [
+                "economic",
+                "conflict"
+              ]
+            }
+          ],
+          "category_counts": {
+            "conflict": 27,
+            "geopolitical": 10,
+            "economic": 3,
+            "central_bank": 1
+          },
+          "feed_scores": {
+            "BBC World News": 63.18,
+            "Al Jazeera": 69.11999999999999,
+            "Financial Times": 53.4,
+            "Bloomberg Markets": 60.199999999999996
+          },
+          "failed_feeds": [
+            "Reuters World News",
+            "Reuters Business"
+          ]
+        }
+      },
+      "votes": [
+        [
+          "SELL",
+          1
+        ],
+        [
+          "BUY",
+          2
+        ],
+        [
+          "BUY",
+          1
+        ]
+      ],
+      "timestamp": "2026-05-28T23:31:57.909473",
+      "status": "PENDING",
+      "activated": "2026-05-28T23:31:57.909473"
+    },
+    "GBPJPY": {
+      "instrument": "GBPJPY",
+      "direction": "BUY",
+      "confidence": 83.3,
+      "buy_pct": 83.3,
+      "sell_pct": 16.7,
+      "emoji": "\ud83d\udfe2",
+      "price": 214.32752,
+      "entry": 214.30166,
+      "stop_loss": 214.04307,
+      "take_profit": 214.81883,
+      "order_type": "BUY LIMIT",
+      "risk_reward": 2.0,
+      "session": "SYDNEY/TOKYO SESSION",
+      "signals": {
+        "rsi": {
+          "instrument": "GBPJPY",
+          "value": 56.23,
+          "signal": "BEARISH",
+          "strength": 3,
+          "emoji": "\ud83d\udfe0",
+          "period": 14,
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:12:23.274521"
+        },
+        "macd": {
+          "instrument": "GBPJPY",
+          "macd": 0.10482,
+          "signal": 0.09227,
+          "histogram": 0.01255,
+          "direction": "BULLISH",
+          "crossover": null,
+          "emoji": "\ud83d\udfe2",
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:12:24.649640"
+        },
+        "bbands": {
+          "instrument": "GBPJPY",
+          "upper": 214.73759,
+          "middle": 214.16366,
+          "lower": 213.58972,
+          "current": 214.32752,
+          "pct_b": 0.643,
+          "band_width": 1.14787,
+          "position": "INSIDE BANDS",
+          "signal": "NEUTRAL",
+          "emoji": "\u26aa",
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:12:25.763425"
+        },
+        "ema200": {
+          "instrument": "GBPJPY",
+          "ema": 213.93089,
+          "current": 214.32752,
+          "trend": "UPTREND",
+          "signal": "BUY BIAS",
+          "emoji": "\ud83d\udfe2",
+          "period": 200,
+          "datetime": "2026-05-30 09:00:00",
+          "updated": "2026-05-29T23:12:26.789917"
+        },
+        "boe_boj": {
+          "boe_yield": 4.8207,
+          "boj_yield": 2.515,
+          "spread": 2.306,
+          "bias": "BULLISH",
+          "bias_score": 65,
+          "emoji": "\ud83d\udfe2"
+        },
+        "friction": {
+          "timestamp": "2026-05-29T23:12:35.610338",
+          "friction_score": 100,
+          "level": "CRITICAL",
+          "gold_impact": "MAXIMUM SAFE-HAVEN DEMAND",
+          "emoji": "\ud83d\udea8",
+          "alert_triggered": true,
+          "total_articles": 28,
+          "top_articles": [
+            {
+              "source": "Financial Times",
+              "title": "BoE governor warns Middle East ceasefire would \u2018still create uncertainty\u2019",
+              "score": 27.0,
+              "keywords": [
+                "war",
+                "ceasefire",
+                "rate cut",
+                "boe"
+              ],
+              "categories": [
+                "central_bank",
+                "conflict"
+              ]
+            },
+            {
+              "source": "Bloomberg Markets",
+              "title": "Treasuries Trim Iran War Losses on Week as Oil Retreats",
+              "score": 23.099999999999998,
+              "keywords": [
+                "war",
+                "conflict",
+                "coup",
+                "bond market"
+              ],
+              "categories": [
+                "market",
+                "conflict"
+              ]
+            },
+            {
+              "source": "BBC World News",
+              "title": "'Controversial' North Korean invasion setting for next Call of Duty game",
+              "score": 15.600000000000001,
+              "keywords": [
+                "war",
+                "invasion",
+                "military"
+              ],
+              "categories": [
+                "conflict"
+              ]
+            },
+            {
+              "source": "BBC World News",
+              "title": "Man jailed for 15 years over plot to attack Taylor Swift concert in Vienna",
+              "score": 14.040000000000001,
+              "keywords": [
+                "attack",
+                "terror"
+              ],
+              "categories": [
+                "geopolitical",
+                "conflict"
+              ]
+            },
+            {
+              "source": "Bloomberg Markets",
+              "title": "Ford Stock Has Best Month Since Financial Crisis on AI Rally",
+              "score": 14.0,
+              "keywords": [
+                "crisis",
+                "financial crisis"
+              ],
+              "categories": [
+                "economic"
+              ]
+            }
+          ],
+          "category_counts": {
+            "central_bank": 1,
+            "conflict": 20,
+            "market": 3,
+            "geopolitical": 6,
+            "economic": 3
+          },
+          "feed_scores": {
+            "BBC World News": 49.14,
+            "Al Jazeera": 40.440000000000005,
+            "Financial Times": 58.95,
+            "Bloomberg Markets": 75.6
+          },
+          "failed_feeds": [
+            "Reuters World News",
+            "Reuters Business"
+          ]
+        }
+      },
+      "votes": [
+        [
+          "SELL",
+          1
+        ],
+        [
+          "BUY",
+          2
+        ],
+        [
+          "BUY",
+          1
+        ],
+        [
+          "BUY",
+          2
+        ]
+      ],
+      "timestamp": "2026-05-29T23:12:35.610338",
+      "status": "PENDING",
+      "activated": "2026-05-29T23:12:35.610338"
+    }
+  },
+  "history": [],
+  "updated": "2026-05-29T23:12:35.611339"
+}
