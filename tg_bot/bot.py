@@ -570,21 +570,37 @@ async def regime_command(
 ):
     try:
         from brain.autoencoder import AutoencoderRegimeDetector
-        ae = AutoencoderRegimeDetector()
-        result = ae.detect_regime()
+        detector = AutoencoderRegimeDetector()
+        obs      = detector.build_observation()
+        result   = detector.detect_anomaly(obs)
+
+        from brain.regime_transfer import RegimeTransfer
+        rt    = RegimeTransfer()
+        match = rt.match_state({
+            'real_yield':     2.18,
+            'friction_score': 100.0,
+            'gold_bias':      48.0,
+            'gbp_bias':       48.0,
+        })
+
         await update.message.reply_text(
             f'🔬 <b>REGIME REPORT</b>\n\n'
-            f'Autoencoder Error: {result.get("recon_error", "LOADING...")}\n'
-            f'Regime State:      {result.get("regime", "LOADING...")}\n'
-            f'Is Anomaly:        {result.get("is_anomaly", "LOADING...")}\n',
-            parse_mode='HTML',
+            f'Recon Error:   <b>{result["reconstruction_error"]}</b>\n'
+            f'Threshold:     {result["threshold"]}\n'
+            f'Is Anomaly:    <b>{result["is_anomaly"]}</b>\n'
+            f'Regime:        <b>{result["regime"]}</b> {result["emoji"]}\n'
+            f'Grey Zone:     {result["grey_zone"]}\n\n'
+            f'<b>REGIME TRANSFER:</b>\n'
+            f'Matched:       {match.get("matched_regime", "None")}\n'
+            f'Similarity:    {match.get("similarity", 0):.4f}\n'
+            f'Policy:        {match.get("inherited_policy", {}).get("direction","?")} '
+            f'{match.get("inherited_policy", {}).get("instrument","?")}',
+            parse_mode='HTML'
         )
     except Exception as e:
         await update.message.reply_text(
-            f'🔬 <b>REGIME REPORT</b>\n\n'
-            f'Brain layer loading...\n'
-            f'<i>{e}</i>',
-            parse_mode='HTML',
+            f'🔬 <b>REGIME REPORT</b>\n\nError: {e}',
+            parse_mode='HTML'
         )
 
 
@@ -597,20 +613,16 @@ async def halflife_command(
     try:
         from memory.half_life import SignalHalfLifeTracker
         tracker = SignalHalfLifeTracker()
-        summary = tracker.get_summary()
+        health  = tracker.get_signal_health()
+
         await update.message.reply_text(
-            f'📉 <b>SIGNAL HALF-LIFE</b>\n\n'
-            f'Signals tracked: {summary.get("total", 0)}\n'
-            f'Healthy:         {summary.get("healthy", 0)}\n'
-            f'Degraded:        {summary.get("degraded", 0)}\n',
-            parse_mode='HTML',
+            tracker.format_halflife_telegram(health),
+            parse_mode='HTML'
         )
     except Exception as e:
         await update.message.reply_text(
-            f'📉 <b>SIGNAL HALF-LIFE</b>\n\n'
-            f'Memory layer loading...\n'
-            f'<i>{e}</i>',
-            parse_mode='HTML',
+            f'📉 <b>SIGNAL HALF-LIFE</b>\n\nError: {e}',
+            parse_mode='HTML'
         )
 
 
