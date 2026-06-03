@@ -1,7 +1,8 @@
 # ════════════════════════════════════════════════════════════════
 # OMNINEXUS — tg_bot/bot.py
-# Telegram Command & Control Terminal
+# Telegram Command & Control Terminal v2
 # Full live signal bot with entry/SL/TP alert system
+# Deployed on Azure App Service — runs 24/7
 # ════════════════════════════════════════════════════════════════
 
 import sys
@@ -11,13 +12,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
 import json
 import logging
-import re
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -40,7 +40,9 @@ CHALLENGE_STATE_FILE = Path(
 CAPITAL, TARGET, DAYS = range(3)
 
 
-# ── CHALLENGE PERSISTENCE ──────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# CHALLENGE PERSISTENCE
+# ════════════════════════════════════════════════════════════════
 
 def save_challenge_state():
     state = {
@@ -54,8 +56,11 @@ def save_challenge_state():
             else None
         ),
     }
-    with open(CHALLENGE_STATE_FILE, 'w') as f:
-        json.dump(state, f, indent=2)
+    try:
+        with open(CHALLENGE_STATE_FILE, 'w') as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        logger.error(f'Challenge save error: {e}')
 
 
 def load_challenge_state():
@@ -76,10 +81,12 @@ def load_challenge_state():
         logger.warning(f'Challenge load error: {e}')
 
 
-# ── ALERT SENDER ───────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# ALERT SENDER — called by all system components
+# ════════════════════════════════════════════════════════════════
 
 async def send_alert(message: str, parse_mode: str = 'HTML'):
-    """Sends message to Telegram. Called by all system components."""
+    """Sends a push alert to your Telegram chat."""
     try:
         bot = Bot(token=config.TELEGRAM_BOT_TOKEN)
         await bot.send_message(
@@ -92,61 +99,251 @@ async def send_alert(message: str, parse_mode: str = 'HTML'):
         logger.error(f'Alert send error: {e}')
 
 
-# ── ALERT FORMATTER ────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# ORDER ALERT FORMATTERS
+# ════════════════════════════════════════════════════════════════
+
+def _fmt(inst: str, price: float) -> str:
+    dec = 2 if inst == 'XAUUSD' else 5
+    return f'{price:.{dec}f}'
+
+
+def format_buy_limit_alert(inst, entry, sl, tp, size, reason=''):
+    return (
+        f'📥 <b>[BUY LIMIT PLACED]</b>\n\n'
+        f'Instrument:  <b>{inst}</b>\n'
+        f'Order Type:  BUY LIMIT\n'
+        f'Entry Price: <b>{_fmt(inst, entry)}</b>\n'
+        f'Stop Loss:   {_fmt(inst, sl)}\n'
+        f'Take Profit: {_fmt(inst, tp)}\n'
+        f'Position:    <b>{size:.2f}%</b>\n'
+        f'{f"Reason: {reason}" if reason else ""}'
+    )
+
+
+def format_sell_limit_alert(inst, entry, sl, tp, size, reason=''):
+    return (
+        f'📤 <b>[SELL LIMIT PLACED]</b>\n\n'
+        f'Instrument:  <b>{inst}</b>\n'
+        f'Order Type:  SELL LIMIT\n'
+        f'Entry Price: <b>{_fmt(inst, entry)}</b>\n'
+        f'Stop Loss:   {_fmt(inst, sl)}\n'
+        f'Take Profit: {_fmt(inst, tp)}\n'
+        f'Position:    <b>{size:.2f}%</b>\n'
+        f'{f"Reason: {reason}" if reason else ""}'
+    )
+
+
+def format_buy_stop_alert(inst, entry, sl, tp, size, reason=''):
+    return (
+        f'🔼 <b>[BUY STOP PLACED]</b>\n\n'
+        f'Instrument:  <b>{inst}</b>\n'
+        f'Order Type:  BUY STOP\n'
+        f'Entry Price: <b>{_fmt(inst, entry)}</b>\n'
+        f'Stop Loss:   {_fmt(inst, sl)}\n'
+        f'Take Profit: {_fmt(inst, tp)}\n'
+        f'Position:    <b>{size:.2f}%</b>\n'
+        f'{f"Reason: {reason}" if reason else ""}'
+    )
+
+
+def format_sell_stop_alert(inst, entry, sl, tp, size, reason=''):
+    return (
+        f'🔽 <b>[SELL STOP PLACED]</b>\n\n'
+        f'Instrument:  <b>{inst}</b>\n'
+        f'Order Type:  SELL STOP\n'
+        f'Entry Price: <b>{_fmt(inst, entry)}</b>\n'
+        f'Stop Loss:   {_fmt(inst, sl)}\n'
+        f'Take Profit: {_fmt(inst, tp)}\n'
+        f'Position:    <b>{size:.2f}%</b>\n'
+        f'{f"Reason: {reason}" if reason else ""}'
+    )
+
+
+def format_order_cancelled_alert(inst, order_type, price, reason=''):
+    return (
+        f'❌ <b>[ORDER CANCELLED]</b>\n\n'
+        f'Instrument:  <b>{inst}</b>\n'
+        f'Order Type:  {order_type}\n'
+        f'Cancelled At: {_fmt(inst, price)}\n'
+        f'{f"Reason: {reason}" if reason else ""}'
+    )
+
+
+def format_order_modified_alert(inst, mod_type, old_val, new_val, reason=''):
+    return (
+        f'✏️ <b>[ORDER MODIFIED]</b>\n\n'
+        f'Instrument:   <b>{inst}</b>\n'
+        f'Modification: {mod_type}\n'
+        f'Old Value:    {old_val}\n'
+        f'New Value:    <b>{new_val}</b>\n'
+        f'{f"Reason: {reason}" if reason else ""}'
+    )
+
 
 def _format_entry_alert(alert: dict) -> str:
     inst = alert['instrument']
-    dec  = 2 if inst == 'XAUUSD' else 5
-    fmt  = f'{{:.{dec}f}}'
     return (
         f'🎯 <b>ENTRY HIT — {inst}</b>\n\n'
         f'Direction:   <b>{alert["direction"]}</b>\n'
-        f'Entry Price: <b>{fmt.format(alert["entry"])}</b>\n'
-        f'Stop Loss:   {fmt.format(alert["sl"])}\n'
-        f'Take Profit: {fmt.format(alert["tp"])}\n'
-        f'Current:     {fmt.format(alert["price"])}\n\n'
+        f'Entry Price: <b>{_fmt(inst, alert["entry"])}</b>\n'
+        f'Stop Loss:   {_fmt(inst, alert["sl"])}\n'
+        f'Take Profit: {_fmt(inst, alert["tp"])}\n'
+        f'Current:     {_fmt(inst, alert["price"])}\n\n'
         f'<i>Trade is now active. Monitoring SL/TP...</i>'
     )
 
 
 def _format_tp_alert(alert: dict) -> str:
     inst = alert['instrument']
-    dec  = 2 if inst == 'XAUUSD' else 5
-    fmt  = f'{{:.{dec}f}}'
     return (
         f'✅ <b>TAKE PROFIT HIT — {inst}</b>\n\n'
         f'Direction: <b>{alert["direction"]}</b>\n'
-        f'TP Price:  <b>{fmt.format(alert["tp"])}</b>\n'
-        f'Exit:      {fmt.format(alert["price"])}\n\n'
+        f'TP Price:  <b>{_fmt(inst, alert["tp"])}</b>\n'
+        f'Exit:      {_fmt(inst, alert["price"])}\n\n'
         f'🏆 <b>RESULT: WIN</b>'
     )
 
 
 def _format_sl_alert(alert: dict, study: dict = None) -> str:
     inst = alert['instrument']
-    dec  = 2 if inst == 'XAUUSD' else 5
-    fmt  = f'{{:.{dec}f}}'
-
     notes_line = ''
     if study and study.get('notes'):
-        notes = '\n'.join(
-            f'• {n}' for n in study['notes']
-        )
-        notes_line = (
-            f'\n\n🧠 <b>BRAIN ANALYSIS:</b>\n{notes}'
-        )
-
+        notes = '\n'.join(f'• {n}' for n in study['notes'])
+        notes_line = f'\n\n🧠 <b>BRAIN ANALYSIS:</b>\n{notes}'
     return (
         f'❌ <b>STOP LOSS HIT — {inst}</b>\n\n'
         f'Direction: <b>{alert["direction"]}</b>\n'
-        f'SL Price:  <b>{fmt.format(alert["sl"])}</b>\n'
-        f'Exit:      {fmt.format(alert["price"])}\n\n'
+        f'SL Price:  <b>{_fmt(inst, alert["sl"])}</b>\n'
+        f'Exit:      {_fmt(inst, alert["price"])}\n\n'
         f'📉 <b>RESULT: LOSS</b>'
         f'{notes_line}'
     )
 
 
-# ── PRICE MONITOR LOOP ─────────────────────────────────────────
+def _format_trade_closed_win(inst, direction, entry, exit_price, pips, pnl):
+    return (
+        f'🟢 <b>[TRADE CLOSED — WIN]</b>\n\n'
+        f'Instrument: <b>{inst}</b>\n'
+        f'Direction:  {direction}\n'
+        f'Entry:      {_fmt(inst, entry)}\n'
+        f'Exit:       <b>{_fmt(inst, exit_price)}</b> (TP hit)\n'
+        f'Pips:       <b>+{pips:.1f}</b>\n'
+        f'P&L:        <b>+${pnl:.2f}</b>\n\n'
+        f'Risk/Reward: Achieved ✅'
+    )
+
+
+def _format_trade_closed_loss(inst, direction, entry, exit_price, pips, pnl):
+    return (
+        f'🔴 <b>[TRADE CLOSED — LOSS]</b>\n\n'
+        f'Instrument: <b>{inst}</b>\n'
+        f'Direction:  {direction}\n'
+        f'Entry:      {_fmt(inst, entry)}\n'
+        f'Exit:       <b>{_fmt(inst, exit_price)}</b> (SL hit)\n'
+        f'Pips:       <b>{pips:.1f}</b>\n'
+        f'P&L:        <b>-${abs(pnl):.2f}</b>\n\n'
+        f'⚠️ Loss analysis triggered...'
+    )
+
+
+# ════════════════════════════════════════════════════════════════
+# LOSS DIAGNOSTIC ALERT
+# ════════════════════════════════════════════════════════════════
+
+def format_loss_diagnostic(
+    inst, direction, pnl, pips, cfr_score,
+    similar_wins, similar_losses,
+    key_differences, corrections,
+    pattern_detected
+):
+    diff_lines = ''
+    for d in key_differences[:3]:
+        diff_lines += (
+            f'  {d["signal"]}: '
+            f'{d["loss_value"]} (loss) vs '
+            f'{d["win_value"]} (win)\n'
+        )
+
+    correction_lines = ''
+    for i, c in enumerate(corrections[:3], 1):
+        correction_lines += f'{i}. {c[:80]}\n'
+
+    pattern_line = ''
+    if pattern_detected:
+        pattern_line = (
+            '\n⚠️ <b>PATTERN DETECTED</b>\n'
+            'This loss type has occurred before.\n'
+            'CFR threshold adjustment applied.\n'
+        )
+
+    return (
+        f'🔴 <b>LOSS DIAGNOSTIC REPORT</b>\n\n'
+        f'Trade:      {inst} {direction}\n'
+        f'P&L:        <b>{pnl:+.2f}</b> ({pips:+.1f} pips)\n'
+        f'CFR Score:  {cfr_score:.3f}\n\n'
+        f'Similar Wins:   {similar_wins}\n'
+        f'Similar Losses: {similar_losses}\n\n'
+        f'<b>KEY DIFFERENCES:</b>\n'
+        f'<code>{diff_lines}</code>\n'
+        f'<b>SELF-CORRECTIONS:</b>\n'
+        f'{correction_lines}'
+        f'{pattern_line}'
+    )
+
+
+# ════════════════════════════════════════════════════════════════
+# WEEKLY LOSS PATTERN REPORT
+# ════════════════════════════════════════════════════════════════
+
+def format_weekly_report(
+    week_trades, week_wins, week_losses,
+    week_pnl, win_rate
+):
+    pnl_emoji = '🟢' if week_pnl > 0 else '🔴'
+    return (
+        f'📊 <b>WEEKLY LOSS PATTERN REPORT</b>\n\n'
+        f'Trades:    {week_trades}\n'
+        f'Wins:      {week_wins}\n'
+        f'Losses:    {week_losses}\n'
+        f'Win Rate:  <b>{win_rate}%</b>\n'
+        f'Week P&L:  {pnl_emoji} <b>{week_pnl:+.2f}</b>\n'
+    )
+
+
+# ════════════════════════════════════════════════════════════════
+# SIGNAL ALERT — pushed automatically when signal fires
+# ════════════════════════════════════════════════════════════════
+
+def format_signal_alert(
+    inst, direction, bias_score, confluence,
+    entry, sl, tp, cfr_score, kelly_size,
+    order_type, reasons=None
+):
+    reason_line = ''
+    if reasons:
+        reason_line = (
+            f'Reasons:     {" · ".join(reasons[:3])}\n'
+        )
+    direction_emoji = '🟢' if 'BUY' in direction or direction == 'LONG' else '🔴'
+    return (
+        f'{direction_emoji} <b>SIGNAL — {inst}</b>\n\n'
+        f'Order Type:  <b>{order_type}</b>\n'
+        f'Direction:   <b>{direction}</b>\n'
+        f'Entry:       <b>{_fmt(inst, entry)}</b>\n'
+        f'Stop Loss:   {_fmt(inst, sl)}\n'
+        f'Take Profit: {_fmt(inst, tp)}\n\n'
+        f'Bias Score:  {bias_score:.1f}/100\n'
+        f'Confluence:  {confluence:.1f}%\n'
+        f'CFR Score:   {cfr_score:.3f}\n'
+        f'Kelly Size:  {kelly_size:.2f}%\n'
+        f'{reason_line}'
+    )
+
+
+# ════════════════════════════════════════════════════════════════
+# PRICE MONITOR LOOP — runs every 10 seconds
+# ════════════════════════════════════════════════════════════════
 
 async def _monitor_loop(app: Application):
     """
@@ -166,7 +363,30 @@ async def _monitor_loop(app: Application):
                 elif alert_type == 'TP_HIT':
                     msg = _format_tp_alert(alert)
                 elif alert_type == 'SL_HIT':
-                    msg = _format_sl_alert(alert)
+                    # Try to get brain study for this loss
+                    study = None
+                    try:
+                        from memory.fingerprint import (
+                            MemoryFingerprintStore
+                        )
+                        store = MemoryFingerprintStore()
+                        fp_id = store.save_trade_fingerprint(
+                            instrument  = alert['instrument'],
+                            direction   = alert['direction'],
+                            entry_state = alert,
+                            exit_state  = alert,
+                            cfr_score   = 0.0,
+                            kelly_size  = 0.0,
+                            pnl         = alert.get('pnl', 0),
+                            pips        = alert.get('pips', 0),
+                            outcome     = 'loss',
+                            order_type  = 'LIMIT',
+                        )
+                        analysis = store.analyze_loss(fp_id)
+                        study    = analysis
+                    except Exception:
+                        pass
+                    msg = _format_sl_alert(alert, study)
                 else:
                     continue
 
@@ -178,7 +398,70 @@ async def _monitor_loop(app: Application):
         await asyncio.sleep(10)
 
 
-# ── /start ─────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# HALF-LIFE ALERT LOOP — checks signal health every 6 hours
+# ════════════════════════════════════════════════════════════════
+
+async def _halflife_monitor_loop():
+    """Fires Telegram alert if any signal degrades below threshold."""
+    while True:
+        try:
+            from memory.half_life import (
+                SignalHalfLifeTracker, TRACKED_SIGNALS
+            )
+            tracker = SignalHalfLifeTracker()
+            health  = tracker.get_signal_health()
+
+            for sig_id, data in health['signals'].items():
+                if data.get('alert') and data.get('correlation') is not None:
+                    cfg = TRACKED_SIGNALS.get(sig_id, {})
+                    msg = tracker.format_alert_telegram(
+                        sig_id,
+                        data['correlation'],
+                        data.get('degradation_pct', 0),
+                    )
+                    await send_alert(msg)
+
+        except Exception as e:
+            logger.error(f'Half-life monitor error: {e}')
+
+        # Check every 6 hours
+        await asyncio.sleep(21600)
+
+
+# ════════════════════════════════════════════════════════════════
+# DARK POOL ALERT LOOP — checks every 4 hours
+# ════════════════════════════════════════════════════════════════
+
+async def _darkpool_monitor_loop():
+    """Fires Telegram alert if dark pool Z-score exceeds 2.0σ."""
+    while True:
+        try:
+            from ingestion.darkpool import scan_dark_pools
+            data = scan_dark_pools()
+
+            if data.get('anomalies_found', 0) > 0:
+                for anomaly in data.get('anomalies', []):
+                    msg = (
+                        f'👻 <b>[DARK POOL ANOMALY]</b>\n\n'
+                        f'Symbol:      <b>{anomaly["symbol"]}</b>\n'
+                        f'Z-Score:     <b>{anomaly["z_score"]:+.2f}σ</b>\n'
+                        f'Direction:   {anomaly["direction"]}\n'
+                        f'Instrument:  {anomaly["instrument"]}\n'
+                        f'Lead Window: 12–72 hours\n\n'
+                        f'<i>Institutional positioning detected</i>'
+                    )
+                    await send_alert(msg)
+
+        except Exception as e:
+            logger.error(f'Dark pool monitor error: {e}')
+
+        await asyncio.sleep(14400)
+
+
+# ════════════════════════════════════════════════════════════════
+# COMMANDS
+# ════════════════════════════════════════════════════════════════
 
 async def start_command(
     update: Update,
@@ -196,8 +479,6 @@ async def start_command(
     )
 
 
-# ── /help ──────────────────────────────────────────────────────
-
 async def help_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
@@ -205,47 +486,44 @@ async def help_command(
     await update.message.reply_text(
         '⚡ <b>OMNINEXUS COMMAND LIST</b>\n\n'
         '<b>MARKET DATA</b>\n'
-        '/status    — System health + API usage\n'
-        '/prices    — Live prices for all pairs\n'
-        '/signal    — Full signal analysis now\n'
+        '/status    — System health + live prices\n'
+        '/prices    — Live prices all pairs\n'
+        '/signal    — Signal analysis (select pair)\n'
         '/signals   — All pair signals + levels\n\n'
+        '<b>ACTIVE SIGNALS</b>\n'
+        '/active    — Current pending signals\n'
+        '/losses    — Recent SL brain studies\n\n'
         '<b>INTELLIGENCE</b>\n'
         '/regime    — Market regime report\n'
         '/halflife  — Signal health report\n'
         '/darkpool  — Dark pool Z-scores\n'
         '/memory    — Episodic memory matches\n'
-        '/history   — Historical data status\n\n'
-        '<b>ACTIVE SIGNALS</b>\n'
-        '/active    — Current active signals\n'
-        '/losses    — Recent SL studies\n\n'
+        '/history   — Historical data status\n'
+        '/api       — API usage stats\n\n'
         '<b>CHALLENGE MODE</b>\n'
         '/challenge        — Start challenge\n'
-        '/challenge_status — Live P&L\n'
+        '/challenge_status — Live P&L dashboard\n'
         '/challenge_stop   — End challenge\n\n'
         '<b>SYSTEM</b>\n'
-        '/kill      — Emergency stop\n'
-        '/api       — API usage stats\n',
+        '/kill      — Emergency stop all signals\n',
         parse_mode='HTML',
     )
 
-
-# ── /status ────────────────────────────────────────────────────
 
 async def status_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-
     try:
         from data.market_data import (
             get_all_prices, get_market_status,
             get_api_usage, _streamer
         )
-        prices   = get_all_prices()
-        market   = get_market_status()
-        api_use  = get_api_usage()
-        ws_status= 'CONNECTED' if _streamer.connected else 'RECONNECTING'
+        prices  = get_all_prices()
+        market  = get_market_status()
+        api_use = get_api_usage()
+        ws_status = 'CONNECTED' if _streamer.connected else 'RECONNECTING'
 
         price_lines = ''
         for inst, price in prices.items():
@@ -253,13 +531,18 @@ async def status_command(
             val = f'{price:.{dec}f}' if price else 'LOADING...'
             price_lines += f'{inst}:    <b>{val}</b>\n'
 
+        challenge_line = ''
+        if config.CHALLENGE_ACTIVE:
+            challenge_line = f'\n⚡ Challenge Mode: <b>ACTIVE</b>\n'
+
         await update.message.reply_text(
             f'📊 <b>SYSTEM STATUS</b>\n'
             f'<code>{now} UTC</code>\n\n'
             f'Engine:      ACTIVE\n'
             f'WebSocket:   {ws_status}\n'
             f'Session:     {market["session"]}\n'
-            f'Market Open: {"YES" if market["is_open"] else "NO"}\n\n'
+            f'Market Open: {"YES" if market["is_open"] else "NO"}\n'
+            f'{challenge_line}\n'
             f'<b>LIVE PRICES</b>\n'
             f'{price_lines}\n'
             f'<b>API BUDGET</b>\n'
@@ -267,7 +550,7 @@ async def status_command(
             f'{api_use["daily_budget"]}\n'
             f'Remaining:   {api_use["remaining"]}\n'
             f'Used:        {api_use["pct_used"]}%\n\n'
-            f'<i>Signal data live from Twelve Data + FRED</i>',
+            f'<i>Signal data: Twelve Data + FRED + Finnhub</i>',
             parse_mode='HTML',
         )
     except Exception as e:
@@ -275,13 +558,11 @@ async def status_command(
             f'📊 <b>SYSTEM STATUS</b>\n'
             f'<code>{now} UTC</code>\n\n'
             f'Engine: ACTIVE\n'
-            f'Error fetching live data: {e}\n\n'
+            f'Live data loading: {e}\n\n'
             f'<i>Run /signal to force refresh</i>',
             parse_mode='HTML',
         )
 
-
-# ── /prices ────────────────────────────────────────────────────
 
 async def prices_command(
     update: Update,
@@ -289,11 +570,8 @@ async def prices_command(
 ):
     try:
         from data.market_data import get_live_price
-        now = datetime.utcnow().strftime('%H:%M:%S')
-        lines = [
-            f'💰 <b>LIVE PRICES</b>\n'
-            f'<code>{now} UTC</code>\n'
-        ]
+        now   = datetime.utcnow().strftime('%H:%M:%S')
+        lines = [f'💰 <b>LIVE PRICES</b>\n<code>{now} UTC</code>\n']
         for inst in config.INSTRUMENTS:
             data = get_live_price(inst)
             dec  = 2 if inst == 'XAUUSD' else 5
@@ -306,58 +584,32 @@ async def prices_command(
                 )
             else:
                 lines.append(f'<b>{inst}</b>: LOADING...')
-
         await update.message.reply_text(
-            '\n'.join(lines),
-            parse_mode='HTML',
+            '\n'.join(lines), parse_mode='HTML',
         )
     except Exception as e:
-        await update.message.reply_text(
-            f'❌ Price fetch error: {e}'
-        )
+        await update.message.reply_text(f'❌ Price error: {e}')
 
-
-# ── /signal ────────────────────────────────────────────────────
-
-# ── PAIR SELECTION STATE ──────────────────────────────────────
-PAIR_SELECT = 10  # conversation state for pair selection
 
 async def signal_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-    """Asks user to choose a pair before fetching signal.
-    Saves API credits — fetches one pair instead of three."""
-    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
+    """Asks user to choose a pair — saves API credits."""
     keyboard = [
+        [InlineKeyboardButton('🥇 XAUUSD (Gold)', callback_data='sig_XAUUSD')],
         [
-            InlineKeyboardButton(
-                'XAUUSD (Gold)',   callback_data='sig_XAUUSD'
-            ),
+            InlineKeyboardButton('💷 GBPUSD', callback_data='sig_GBPUSD'),
+            InlineKeyboardButton('⚡ GBPJPY', callback_data='sig_GBPJPY'),
         ],
-        [
-            InlineKeyboardButton(
-                'GBPUSD',          callback_data='sig_GBPUSD'
-            ),
-            InlineKeyboardButton(
-                'GBPJPY',          callback_data='sig_GBPJPY'
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                'ALL PAIRS (uses 3x credits)',
-                callback_data='sig_ALL'
-            ),
-        ],
+        [InlineKeyboardButton('📡 ALL PAIRS (3x credits)', callback_data='sig_ALL')],
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         '📡 <b>SELECT PAIR FOR SIGNAL</b>\n\n'
         'Choose one pair to save API credits.\n'
-        'ALL PAIRS uses 3x more requests.',
+        'ALL PAIRS uses 3× more requests.',
         parse_mode='HTML',
-        reply_markup=reply_markup,
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
@@ -365,11 +617,9 @@ async def signal_callback(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-    """Handles pair selection button press."""
     query = update.callback_query
     await query.answer()
-
-    choice = query.data  # e.g. sig_XAUUSD or sig_ALL
+    choice = query.data
 
     if choice == 'sig_ALL':
         instruments = config.INSTRUMENTS
@@ -387,9 +637,7 @@ async def signal_callback(
         )
 
     try:
-        from signals.engine import (
-            calculate_signal, format_signal_message
-        )
+        from signals.engine import calculate_signal, format_signal_message
         from data.market_data import get_api_usage
 
         for inst in instruments:
@@ -402,7 +650,6 @@ async def signal_callback(
             )
             await asyncio.sleep(0.3)
 
-        # Show remaining API budget
         usage = get_api_usage()
         await context.bot.send_message(
             chat_id = query.message.chat_id,
@@ -412,26 +659,20 @@ async def signal_callback(
             ),
             parse_mode='HTML',
         )
-
     except Exception as e:
         await context.bot.send_message(
             chat_id    = query.message.chat_id,
-            text       = f'Signal error: {e}',
+            text       = f'❌ Signal error: {e}',
             parse_mode = 'HTML',
         )
 
-
-# ── /signals ───────────────────────────────────────────────────
 
 async def signals_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-    """Same as /signal — shows pair selection."""
     await signal_command(update, context)
 
-
-# ── /active ────────────────────────────────────────────────────
 
 async def active_command(
     update: Update,
@@ -445,12 +686,8 @@ async def active_command(
             parse_mode='HTML',
         )
     except Exception as e:
-        await update.message.reply_text(
-            f'❌ Error: {e}'
-        )
+        await update.message.reply_text(f'❌ Error: {e}')
 
-
-# ── /losses ────────────────────────────────────────────────────
 
 async def losses_command(
     update: Update,
@@ -458,14 +695,16 @@ async def losses_command(
 ):
     """Shows last 3 SL studies from brain analysis."""
     try:
-        study_file = Path(
-            os.path.dirname(os.path.abspath(__file__))
-        ).parent / 'signals' / 'loss_studies.json'
+        study_file = (
+            Path(os.path.dirname(os.path.abspath(__file__)))
+            .parent / 'signals' / 'loss_studies.json'
+        )
 
         if not study_file.exists():
             await update.message.reply_text(
                 '🧠 No loss studies yet.\n'
-                'Brain will study each SL hit automatically.'
+                'Brain studies each SL hit automatically.',
+                parse_mode='HTML',
             )
             return
 
@@ -473,9 +712,7 @@ async def losses_command(
             studies = json.load(f)
 
         if not studies:
-            await update.message.reply_text(
-                '🧠 No loss studies yet.'
-            )
+            await update.message.reply_text('🧠 No loss studies yet.')
             return
 
         lines = ['🧠 <b>RECENT LOSS STUDIES</b>\n']
@@ -485,58 +722,38 @@ async def losses_command(
             )
             lines.append(
                 f'<b>{study["instrument"]} '
-                f'{study["direction"]}</b>\n'
-                f'{study["timestamp"][:19]}\n'
-                f'Confidence: {study["confidence"]}%\n'
-                f'Notes:\n{notes or "  None"}\n'
+                f'{study.get("direction","?")}</b>\n'
+                f'{study.get("timestamp","")[:16]}\n'
+                f'{notes}\n'
             )
-
         await update.message.reply_text(
-            '\n'.join(lines),
-            parse_mode='HTML',
+            '\n'.join(lines), parse_mode='HTML',
         )
     except Exception as e:
-        await update.message.reply_text(f'❌ Error: {e}')
+        await update.message.reply_text(f'🧠 Loss studies error: {e}')
 
-
-# ── /history ───────────────────────────────────────────────────
 
 async def history_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
-        from data.history import get_history_stats
-        stats = get_history_stats()
-
-        if not stats:
-            await update.message.reply_text(
-                '📚 No history files yet.\n'
-                'History downloads automatically on startup.'
-            )
-            return
-
-        lines = ['📚 <b>HISTORICAL DATA</b>\n']
-        for name, info in sorted(stats.items()):
-            if 'error' in info:
-                lines.append(f'❌ {name}: corrupted')
-            else:
-                lines.append(
-                    f'<b>{name}</b>: '
-                    f'{info["bars"]} bars | '
-                    f'{info["from"]} → {info["to"]} | '
-                    f'{info["size_kb"]} KB'
-                )
-
+        from data.history import get_history_status
+        status = get_history_status()
+        lines  = ['📚 <b>HISTORICAL DATA STATUS</b>\n']
+        for key, info in status.items():
+            ok   = '✅' if info.get('ok') else '❌'
+            bars = info.get('bars', 0)
+            lines.append(f'{ok} {key}: {bars:,} bars')
         await update.message.reply_text(
-            '\n'.join(lines),
-            parse_mode='HTML',
+            '\n'.join(lines), parse_mode='HTML',
         )
     except Exception as e:
-        await update.message.reply_text(f'❌ Error: {e}')
+        await update.message.reply_text(
+            f'📚 <b>HISTORY STATUS</b>\n\nLoading...\n<i>{e}</i>',
+            parse_mode='HTML',
+        )
 
-
-# ── /api ───────────────────────────────────────────────────────
 
 async def api_command(
     update: Update,
@@ -547,22 +764,19 @@ async def api_command(
         usage = get_api_usage()
         await update.message.reply_text(
             f'📡 <b>API USAGE</b>\n\n'
-            f'Provider:   Twelve Data\n'
-            f'Plan:       Free (800/day)\n'
-            f'Used today: {usage["calls_today"]}\n'
-            f'Remaining:  {usage["remaining"]}\n'
-            f'Used:       {usage["pct_used"]}%\n\n'
-            f'WebSocket:  Live prices (0 credits)\n'
-            f'Finnhub:    News + Sentiment (60/min)\n'
-            f'FRED:       Yields (unlimited)\n'
-            f'yfinance:   History (unlimited)',
+            f'Used today:  {usage["calls_today"]}/'
+            f'{usage["daily_budget"]}\n'
+            f'Remaining:   <b>{usage["remaining"]}</b>\n'
+            f'Used:        {usage["pct_used"]}%\n\n'
+            f'WebSocket:   Live prices (0 credits)\n'
+            f'Finnhub:     News + Sentiment (60/min)\n'
+            f'FRED:        Yields (unlimited)\n'
+            f'yfinance:    History (unlimited)',
             parse_mode='HTML',
         )
     except Exception as e:
-        await update.message.reply_text(f'❌ Error: {e}')
+        await update.message.reply_text(f'❌ API error: {e}')
 
-
-# ── /regime ────────────────────────────────────────────────────
 
 async def regime_command(
     update: Update,
@@ -583,28 +797,28 @@ async def regime_command(
             'gbp_bias':       48.0,
         })
 
+        policy = match.get('inherited_policy', {})
+
         await update.message.reply_text(
             f'🔬 <b>REGIME REPORT</b>\n\n'
-            f'Recon Error:   <b>{result["reconstruction_error"]}</b>\n'
-            f'Threshold:     {result["threshold"]}\n'
-            f'Is Anomaly:    <b>{result["is_anomaly"]}</b>\n'
-            f'Regime:        <b>{result["regime"]}</b> {result["emoji"]}\n'
-            f'Grey Zone:     {result["grey_zone"]}\n\n'
-            f'<b>REGIME TRANSFER:</b>\n'
-            f'Matched:       {match.get("matched_regime", "None")}\n'
-            f'Similarity:    {match.get("similarity", 0):.4f}\n'
-            f'Policy:        {match.get("inherited_policy", {}).get("direction","?")} '
-            f'{match.get("inherited_policy", {}).get("instrument","?")}',
-            parse_mode='HTML'
+            f'Recon Error:  <b>{result["reconstruction_error"]}</b>\n'
+            f'Threshold:    {result["threshold"]}\n'
+            f'Is Anomaly:   <b>{result["is_anomaly"]}</b>\n'
+            f'Regime:       <b>{result["regime"]}</b> {result["emoji"]}\n'
+            f'Grey Zone:    {result["grey_zone"]}\n\n'
+            f'<b>REGIME TRANSFER MATCH:</b>\n'
+            f'Matched:      {match.get("matched_regime","None")}\n'
+            f'Similarity:   {match.get("similarity",0):.4f}\n'
+            f'Policy:       {policy.get("direction","?")} '
+            f'{policy.get("instrument","?")}',
+            parse_mode='HTML',
         )
     except Exception as e:
         await update.message.reply_text(
             f'🔬 <b>REGIME REPORT</b>\n\nError: {e}',
-            parse_mode='HTML'
+            parse_mode='HTML',
         )
 
-
-# ── /halflife ──────────────────────────────────────────────────
 
 async def halflife_command(
     update: Update,
@@ -614,19 +828,16 @@ async def halflife_command(
         from memory.half_life import SignalHalfLifeTracker
         tracker = SignalHalfLifeTracker()
         health  = tracker.get_signal_health()
-
         await update.message.reply_text(
             tracker.format_halflife_telegram(health),
-            parse_mode='HTML'
+            parse_mode='HTML',
         )
     except Exception as e:
         await update.message.reply_text(
             f'📉 <b>SIGNAL HALF-LIFE</b>\n\nError: {e}',
-            parse_mode='HTML'
+            parse_mode='HTML',
         )
 
-
-# ── /darkpool ──────────────────────────────────────────────────
 
 async def darkpool_command(
     update: Update,
@@ -634,33 +845,31 @@ async def darkpool_command(
 ):
     try:
         from ingestion.darkpool import scan_dark_pools
-        data = scan_dark_pools()
+        data    = scan_dark_pools()
         results = data.get('results', {})
 
         lines = ['👻 <b>DARK POOL REPORT</b>\n']
         for symbol, info in results.items():
-            z = info.get('z_score', 0)
-            lines.append(
-                f'{symbol}: {z:.2f}σ'
-            )
+            z     = info.get('z_score', 0)
+            anom  = ' ⚠️' if info.get('is_anomaly') else ''
+            source= ' [SIM]' if info.get('data_source') == 'SIMULATED' else ''
+            lines.append(f'{symbol}: <b>{z:+.2f}σ</b>{anom}{source}')
 
         lines.append(
-            f'\nAnomalies: {data.get("anomaly_count", 0)}\n'
-            f'Threshold: 2.0σ'
+            f'\nAnomalies:  {data.get("anomalies_found", 0)}\n'
+            f'Threshold:  {data.get("alert_threshold", 2.0)}σ\n'
+            f'Lead time:  12–72 hours'
         )
         await update.message.reply_text(
-            '\n'.join(lines),
-            parse_mode='HTML',
+            '\n'.join(lines), parse_mode='HTML',
         )
     except Exception as e:
         await update.message.reply_text(
             f'👻 <b>DARK POOL REPORT</b>\n\n'
-            f'Ingestion layer loading...\n<i>{e}</i>',
+            f'Ingestion loading...\n<i>{e}</i>',
             parse_mode='HTML',
         )
 
-
-# ── /memory ────────────────────────────────────────────────────
 
 async def memory_command(
     update: Update,
@@ -668,27 +877,10 @@ async def memory_command(
 ):
     try:
         from memory.fingerprint import MemoryFingerprintStore
-        store   = MemoryFingerprintStore()
-        matches = store.latest_n(5)
-
-        if not matches:
-            await update.message.reply_text(
-                '🧠 <b>EPISODIC MEMORY</b>\n\n'
-                'No fingerprints stored yet.\n'
-                'Memory builds as the system runs.',
-                parse_mode='HTML',
-            )
-            return
-
-        lines = ['🧠 <b>EPISODIC MEMORY — LAST 5</b>\n']
-        for m in matches:
-            lines.append(
-                f'{m.get("timestamp","?")[:10]}: '
-                f'{m.get("instrument","?")} '
-                f'{m.get("result","?")}'
-            )
+        store  = MemoryFingerprintStore()
+        counts = store.count()
         await update.message.reply_text(
-            '\n'.join(lines),
+            store.format_memory_telegram(top_n=5),
             parse_mode='HTML',
         )
     except Exception as e:
@@ -699,14 +891,11 @@ async def memory_command(
         )
 
 
-# ── /kill ──────────────────────────────────────────────────────
-
 async def kill_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     logger.critical('KILL SWITCH activated via Telegram')
-    # Clear all active signals
     try:
         from signals.engine import _active_signals, _save_signals
         _active_signals.clear()
@@ -723,7 +912,9 @@ async def kill_command(
     )
 
 
-# ── CHALLENGE HANDLERS ─────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# CHALLENGE MODE
+# ════════════════════════════════════════════════════════════════
 
 async def challenge_start(
     update: Update,
@@ -740,7 +931,7 @@ async def challenge_start(
     await update.message.reply_text(
         '🏆 <b>CHALLENGE MODE SETUP</b>\n\n'
         'Question 1 of 3:\n'
-        '<b>What is your starting capital in USD?</b>\n'
+        '<b>Starting capital in USD?</b>\n'
         '<i>Example: 500</i>',
         parse_mode='HTML',
     )
@@ -765,9 +956,7 @@ async def challenge_capital(
         )
         return TARGET
     except ValueError:
-        await update.message.reply_text(
-            '❌ Enter a valid number. Example: 500'
-        )
+        await update.message.reply_text('❌ Enter a valid number. Example: 500')
         return CAPITAL
 
 
@@ -789,9 +978,7 @@ async def challenge_target(
         )
         return DAYS
     except ValueError:
-        await update.message.reply_text(
-            '❌ Enter a number between 1 and 100.'
-        )
+        await update.message.reply_text('❌ Enter a number between 1 and 100.')
         return TARGET
 
 
@@ -800,7 +987,7 @@ async def challenge_days(
     context: ContextTypes.DEFAULT_TYPE
 ):
     try:
-        days    = int(update.message.text.strip())
+        days = int(update.message.text.strip())
         if days <= 0:
             raise ValueError
 
@@ -817,31 +1004,27 @@ async def challenge_days(
         config.CHALLENGE_TARGET_PCT = target_pct
         config.CHALLENGE_DAYS       = days
         config.CHALLENGE_START_DATE = datetime.utcnow()
-
         save_challenge_state()
 
         await update.message.reply_text(
             f'🏆 <b>CHALLENGE ACTIVATED</b>\n\n'
-            f'Capital:     <b>${capital:,.2f}</b>\n'
-            f'Target:      <b>{target_pct}% = '
-            f'${profit_target:,.2f}</b>\n'
-            f'Duration:    <b>{days} days</b>\n'
+            f'Capital:        <b>${capital:,.2f}</b>\n'
+            f'Target:         <b>{target_pct}% = ${profit_target:,.2f}</b>\n'
+            f'Duration:       <b>{days} days</b>\n'
             f'━━━━━━━━━━━━━━━━━━━━\n'
             f'Daily Target:   ${daily_target:,.2f}/day\n'
             f'Max Daily Loss: ${max_daily_loss:,.2f} (2%)\n'
             f'Max Drawdown:   ${max_drawdown:,.2f} (5%)\n'
-            f'Min R:R:        1:{config.TP_MULTIPLIER}\n'
+            f'Min R:R:        1:2 enforced\n'
             f'━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'Signals now monitored under challenge rules.\n'
+            f'All signals now governed by challenge rules.\n'
             f'Use /challenge_status to track progress.',
             parse_mode='HTML',
         )
         return ConversationHandler.END
 
     except ValueError:
-        await update.message.reply_text(
-            '❌ Enter a valid number of days.'
-        )
+        await update.message.reply_text('❌ Enter a valid number of days.')
         return DAYS
 
 
@@ -863,20 +1046,17 @@ async def challenge_status_command(
         )
         return
 
-    now            = datetime.utcnow()
-    elapsed        = (now - config.CHALLENGE_START_DATE).days + 1
-    remaining      = max(0, config.CHALLENGE_DAYS - elapsed)
-    profit_target  = (
-        config.CHALLENGE_CAPITAL * (config.CHALLENGE_TARGET_PCT / 100)
-    )
-    daily_target   = profit_target / config.CHALLENGE_DAYS
+    now           = datetime.utcnow()
+    elapsed       = (now - config.CHALLENGE_START_DATE).days + 1
+    remaining     = max(0, config.CHALLENGE_DAYS - elapsed)
+    profit_target = config.CHALLENGE_CAPITAL * (config.CHALLENGE_TARGET_PCT / 100)
+    daily_target  = profit_target / config.CHALLENGE_DAYS
 
-    # Count wins/losses from signal history
     try:
         from signals.engine import _signal_history
-        wins   = sum(1 for s in _signal_history if s.get('result') == 'WIN')
-        losses = sum(1 for s in _signal_history if s.get('result') == 'LOSS')
-        total  = wins + losses
+        wins     = sum(1 for s in _signal_history if s.get('result') == 'WIN')
+        losses   = sum(1 for s in _signal_history if s.get('result') == 'LOSS')
+        total    = wins + losses
         win_rate = round(wins / total * 100, 1) if total > 0 else 0
     except Exception:
         wins = losses = total = 0
@@ -904,9 +1084,7 @@ async def challenge_stop_command(
     context: ContextTypes.DEFAULT_TYPE
 ):
     if not config.CHALLENGE_ACTIVE:
-        await update.message.reply_text(
-            '⚠️ No active challenge.'
-        )
+        await update.message.reply_text('⚠️ No active challenge.')
         return
 
     config.CHALLENGE_ACTIVE = False
@@ -922,11 +1100,12 @@ async def challenge_stop_command(
     )
 
 
-# ── MAIN ───────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# MAIN
+# ════════════════════════════════════════════════════════════════
 
 def main():
     logger.info('Starting OmniNexus Telegram bot...')
-
     load_challenge_state()
 
     # Start live price stream
@@ -937,7 +1116,7 @@ def main():
     except Exception as e:
         logger.warning(f'Price stream start error: {e}')
 
-    # Run startup backtest in background — no manual trigger needed
+    # Startup backtest in background
     try:
         from brain.brain_update import run_startup_backtest
         threading.Thread(
@@ -966,26 +1145,19 @@ def main():
 
     # Challenge conversation
     challenge_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler('challenge', challenge_start)
-        ],
+        entry_points=[CommandHandler('challenge', challenge_start)],
         states={
             CAPITAL: [MessageHandler(
-                filters.TEXT & ~filters.COMMAND,
-                challenge_capital
+                filters.TEXT & ~filters.COMMAND, challenge_capital
             )],
             TARGET: [MessageHandler(
-                filters.TEXT & ~filters.COMMAND,
-                challenge_target
+                filters.TEXT & ~filters.COMMAND, challenge_target
             )],
             DAYS: [MessageHandler(
-                filters.TEXT & ~filters.COMMAND,
-                challenge_days
+                filters.TEXT & ~filters.COMMAND, challenge_days
             )],
         },
-        fallbacks=[
-            CommandHandler('cancel', challenge_cancel)
-        ],
+        fallbacks=[CommandHandler('cancel', challenge_cancel)],
     )
 
     # Register all handlers
@@ -1009,23 +1181,31 @@ def main():
     app.add_handler(CallbackQueryHandler(signal_callback, pattern='^sig_'))
     app.add_handler(challenge_handler)
 
-    # Start background loops
+    # Background loops
     async def post_init(application: Application):
         asyncio.create_task(_monitor_loop(application))
+        asyncio.create_task(_halflife_monitor_loop())
+        asyncio.create_task(_darkpool_monitor_loop())
 
-        # Auto-refresh indicators one pair at a time
-        from data.market_data import auto_refresh_loop
-        asyncio.create_task(auto_refresh_loop())
+        try:
+            from data.market_data import auto_refresh_loop
+            asyncio.create_task(auto_refresh_loop())
+        except Exception as e:
+            logger.warning(f'auto_refresh_loop error: {e}')
 
-        # Weekend brain update scheduler
-        from brain.brain_update import weekend_update_loop
-        asyncio.create_task(weekend_update_loop())
+        try:
+            from brain.brain_update import weekend_update_loop
+            asyncio.create_task(weekend_update_loop())
+        except Exception as e:
+            logger.warning(f'weekend_update_loop error: {e}')
 
-        # Sunday calendar refresh
-        from brain.event_interrupt import get_interrupt
-        asyncio.create_task(
-            get_interrupt().weekly_calendar_refresh_loop()
-        )
+        try:
+            from brain.event_interrupt import get_interrupt
+            asyncio.create_task(
+                get_interrupt().weekly_calendar_refresh_loop()
+            )
+        except Exception as e:
+            logger.warning(f'event_interrupt error: {e}')
 
         logger.info('All background loops started')
 
